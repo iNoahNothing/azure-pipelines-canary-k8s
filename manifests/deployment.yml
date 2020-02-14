@@ -19,7 +19,7 @@ spec:
       containers:
       - name: sampleapp
         #replace <foobar> with your container registry. Example: contosodemo.azurecr.io
-        image: azurepipelinescanaryk8s.azurecr.io/azure-pipelines-canary-k8s
+        image: nkrause/azure-pipelines-canary-k8s
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
