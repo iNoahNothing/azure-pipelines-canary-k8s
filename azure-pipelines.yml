@@ -40,7 +40,7 @@ stages:
   dependsOn: Build
 
   jobs:
-  - deployment: Deploy Static Manifests
+  - deployment: Deploy_Static_Manifests
     displayName: Deploy Static Manifests
     pool:
       vmImage: $(vmImageName)
@@ -62,7 +62,7 @@ stages:
               action: deploy
               manifests: $(Pipeline.Workspace)/misc/*
 
-  - deployment: Deploy Canary
+  - deployment: Deploy_Canary
     displayName: Deploy Canary
     pool:
       vmImage: $(vmImageName)
