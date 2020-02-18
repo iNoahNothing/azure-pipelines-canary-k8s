@@ -4,16 +4,69 @@ trigger:
 pool:
   vmImage: Ubuntu-16.04
 
+resources:
+- repo: self
+
 variables:
   imageName: azure-pipelines-canary-k8s
+  vmImageName: Ubuntu-16.04
+  dockerRegistryServiceConnection: 'f5573d2b-385e-4495-b585-f25f4f74b98a'
 
-steps:
-- task: Docker@2
-  displayName: Build and push image
-  inputs:
-    containerRegistry: nkrause
-    repository: nkrause/$(imageName)
-    command: buildAndPush
-    Dockerfile: app/Dockerfile
-    tags: |
-      $(Build.BuildId)
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: Build
+    displayname: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Docker@2
+      displayName: Build and push image
+      inputs:
+        containerRegistry: nkrause
+        repository: nkrause/$(imageName)
+        command: buildAndPush
+        Dockerfile: app/Dockerfile
+        tags: |
+          $(Build.BuildId)
+    - upload: manifests
+      artifact: manifests
+
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy
+    pool:
+      vmImage: $(vmImageName)
+    environment: k8sEnvironment.default
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: KubernetesManifest@0
+            displayName: Create Secret
+            inputs:
+              action: createSecret
+              secretType: dockerRegistry
+              secretName: $(imageName)
+              dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
+
+          - task: KubernetesManifest@0
+            displayName: Deploy canary
+            inputs:
+              action: deploy
+              strategy: canary
+              trafficSplitMethod: pod
+              percentage: '25'
+              manifests: manifests/*
+              containers: nkrause/$(imageName):$(Build.BuildId)
+              imagePullSecrets: $(imageName)
+          - task: KubernetesManifest@0
+            displayName: Deploy Fortio and ServiceMonitor
+            inputs:
+              action: deploy
+              manifests: misc/*
