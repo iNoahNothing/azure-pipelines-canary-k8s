@@ -17,7 +17,7 @@ stages:
   displayName: Build stage
   jobs:
   - job: Build
-    displayname: Build
+    displayName: Build
     pool:
       vmImage: $(vmImageName)
     steps:
