@@ -40,8 +40,8 @@ stages:
   dependsOn: Build
 
   jobs:
-  - deployment: Deploy
-    displayName: Deploy
+  - deployment: Deploy Static Manifests
+    displayName: Deploy Static Manifests
     pool:
       vmImage: $(vmImageName)
     environment: k8sEnvironment.default
@@ -56,7 +56,22 @@ stages:
               secretType: dockerRegistry
               secretName: $(imageName)
               dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
+          - task: KubernetesManifest@0
+            displayName: Deploy Fortio and ServiceMonitor
+            inputs:
+              action: deploy
+              manifests: $(Pipeline.Workspace)/misc/*
 
+  - deployment: Deploy Canary
+    displayName: Deploy Canary
+    pool:
+      vmImage: $(vmImageName)
+    environment: k8sEnvironment.default
+    strategy:
+      canary:
+        increments: 25
+        deploy:
+          steps:
           - task: KubernetesManifest@0
             displayName: Deploy canary
             inputs:
@@ -67,8 +82,10 @@ stages:
               manifests: $(Pipeline.Workspace)/manifests/*
               containers: nkrause/$(imageName):$(Build.BuildId)
               imagePullSecrets: $(imageName)
-          - task: KubernetesManifest@0
-            displayName: Deploy Fortio and ServiceMonitor
-            inputs:
-              action: deploy
-              manifests: $(Pipeline.Workspace)/misc/*
+        on:
+          failure:
+            steps:
+            - script: echo clean-up, rollback...
+          successL:
+            steps:
+            - script: echo checks passed, notify...
