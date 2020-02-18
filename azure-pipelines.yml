@@ -69,7 +69,7 @@ stages:
     environment: k8sEnvironment.default
     strategy:
       canary:
-        increments: [10, 20]
+        increments: [25, 50]
         deploy:
           steps:
           - task: KubernetesManifest@0
@@ -78,14 +78,35 @@ stages:
               action: deploy
               strategy: canary
               trafficSplitMethod: pod
-              percentage: '25'
+              percentage: $(strategy.increment)
               manifests: $(Pipeline.Workspace)/manifests/*
               containers: nkrause/$(imageName):$(Build.BuildId)
               imagePullSecrets: $(imageName)
+        postRouteTraffic:
+          steps:
+          - task: ManualIntervention@8
+            displayName: Promote/Reject Canary
         on:
           failure:
             steps:
             - script: echo clean-up, rollback...
+            - task: KubernetesManifest@0
+              displayName: Reject Canary
+              inputs:
+                action: reject
+                strategy: canary
+                percentage: $(strategy.increment)
+                manifests: $(Pipeline.Workspace)/manifests/*
           success:
             steps:
             - script: echo checks passed, notify...
+            - task: KubernetesManifest@0
+              displayName: Promote Canary
+              inputs:
+                action: promote
+                strategy: canary
+                percentage: $(strategy.increment)
+                manifests: $(Pipeline.Workspace)/manifests/*
+                containers: nkrause/$(imageName):$(Build.BuildId)
+                imagePullSecrets: $(imageName)
+
