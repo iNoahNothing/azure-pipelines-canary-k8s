@@ -32,6 +32,8 @@ stages:
           $(Build.BuildId)
     - upload: manifests
       artifact: manifests
+    - upload: misc
+      artifact: misc
 
 - stage: Deploy
   displayName: Deploy stage
@@ -62,11 +64,11 @@ stages:
               strategy: canary
               trafficSplitMethod: pod
               percentage: '25'
-              manifests: manifests/*
+              manifests: $(Pipeline.Workspace)/manifests/*
               containers: nkrause/$(imageName):$(Build.BuildId)
               imagePullSecrets: $(imageName)
           - task: KubernetesManifest@0
             displayName: Deploy Fortio and ServiceMonitor
             inputs:
               action: deploy
-              manifests: misc/*
+              manifests: $(Pipeline.Workspace)/misc/*
